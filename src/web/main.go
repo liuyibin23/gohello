@@ -1,103 +1,82 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
-	"model"
+	"log"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
+	"utilslib"
 )
 
-func hello(w http.ResponseWriter,r *http.Request){
-	fmt.Fprintf(w,"Hello!")
+var (
+	sessionMgr *SessionManager = nil
+)
+
+func hello(w http.ResponseWriter, r *http.Request) {
+
+	sessionMgr.maxAge = 30
+	session := sessionMgr.BeginSession(w, r)
+	session.GetId()
+	fmt.Fprintf(w, "Hello!,sessionid = %s", session.GetId())
+	//fmt.Fprintf(w,"Hello!")
+	//fmt.Println(time.Now().Format("2006-01-02 15:04:05"))
+	//time.AfterFunc(5 * time.Second, func() {
+	//	fmt.Println(time.Now().Format("2006-01-02 15:04:05"))
+	//})
+
 }
 
-func log(h http.HandlerFunc) http.HandlerFunc{
+func logFunc(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
-		fmt.Println("Handler function called - " + name)
-		h(w,r)
+		//fmt.Println("Handler function called - " + name)
+		//log.Println("Handler function called - " + name)
+		logger.Println("Handler function called - " + name)
+		h(w, r)
 	}
 }
 
-type WorldHandler struct {}
+type WorldHandler struct{}
 
-func (h *WorldHandler) ServeHTTP(w http.ResponseWriter,r *http.Request){
-	fmt.Fprintf(w,"World!")
+func (h *WorldHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "World!")
 }
 
-func auth(w http.ResponseWriter,r *http.Request){
-	if r.Method == "POST" {
-		len := r.ContentLength
-		body := make([]byte,len)
-		r.Body.Read(body)
-		//fmt.Fprintf(w,string(body))
-		var authRequest model.AuthRequest
-		err := json.Unmarshal(body,&authRequest)
-		authResponse := model.AuthResponse{}
-		if err == nil{
-			db,err := sql.Open("sqlite3","./appDB.db")
-			checkErr(err)
-
-			rows,err := db.Query("SELECT username,password FROM users WHERE username=?",authRequest.UserName)
-			checkErr(err)
-			if rows.Next(){
-				var uname string
-				var pwd string
-				rows.Scan(&uname,&pwd)
-				if pwd == authRequest.PassWord{
-					authResponse.Status = "0"
-					authResponse.DeveleperPermissionDevices = ""
-					authResponse.RemotePermissionDevices = ""
-				} else {
-					authResponse.Status = "2"
-					authResponse.DeveleperPermissionDevices = ""
-					authResponse.RemotePermissionDevices = ""
-				}
-			} else {
-				authResponse.Status = "1"
-				authResponse.DeveleperPermissionDevices = ""
-				authResponse.RemotePermissionDevices = ""
-			}
-			////插入数据
-			//stmt, err := db.Prepare("INSERT INTO userinfo(username, departname, created) values(?,?,?)")
-			//checkErr(err)
-			//
-			//res, err := stmt.Exec("astaxie", "研发部门", "2012-12-09")
-			//checkErr(err)
-			//id, err := res.LastInsertId()
-			//checkErr(err)
-			//fmt.Println(id)
-
-
-		} else{
-			authResponse.Status = "256"
-			authResponse.DeveleperPermissionDevices = ""
-			authResponse.RemotePermissionDevices = ""
-		}
-		responseJson,_ := json.Marshal(authResponse)
-		fmt.Fprintf(w,string(responseJson))
-	}
-
-}
-
-func checkErr(err error){
-	if err != nil{
+func checkErr(err error) {
+	if err != nil {
 		panic(err)
 	}
 }
 
-func main(){
+var logger *log.Logger
+
+func init() {
+
+	f, err := os.OpenFile("test.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
+	if err != nil {
+		log.Fatal(err)
+	}
+	logger = log.New(f, "", log.LstdFlags|log.Lshortfile)
+	// 设置日志抬头信息
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	sessionMgr = NewSessionManager()
+
+	utilslib.NewFileLogger("test.log", 1024*1024, log.LstdFlags|log.Lshortfile, 3)
+}
+
+func main() {
+
 	world := WorldHandler{}
 	server := http.Server{
-		Addr:"0.0.0.0:8080",
+		Addr: "0.0.0.0:8080",
 	}
 	//http.HandleFunc ("/hello", hello)
-	http.HandleFunc("/hello",log(hello))
+	http.HandleFunc("/hello", logFunc(hello))
 	http.Handle("/world", &world)
-	http.HandleFunc("/auth",auth)
+	http.HandleFunc("/auth", auth)
+	http.HandleFunc("/resetpwd", resetpwd)
 	server.ListenAndServe()
 }
