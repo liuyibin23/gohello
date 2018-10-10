@@ -45,6 +45,8 @@ func NewFileLogger(lfn string, maxsize int, flag int, depth int) *Logger {
 	jack := &lumberjack.Logger{
 		Filename: lfn,
 		MaxSize:  maxsize, // megabytes
+		LocalTime: true,
+		MaxAge: 30,
 	}
 
 	logger := NewWriterLogger(jack, flag, depth)
