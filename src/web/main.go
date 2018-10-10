@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"utilslib"
 )
 
 var (
@@ -62,6 +63,8 @@ func init() {
 	// 设置日志抬头信息
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	sessionMgr = NewSessionManager()
+
+	utilslib.NewFileLogger("test.log", 1024*1024, log.LstdFlags|log.Lshortfile, 3)
 }
 
 func main() {
