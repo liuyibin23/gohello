@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/codegangsta/negroni"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"utilslib"
+	_ "github.com/codegangsta/negroni"
 )
 
 var (
@@ -67,6 +69,7 @@ func init() {
 	utilslib.NewFileLogger("test.log", 1024*1024, log.LstdFlags|log.Lshortfile, 3)
 }
 
+
 func main() {
 
 	world := WorldHandler{}
@@ -78,5 +81,12 @@ func main() {
 	http.Handle("/world", &world)
 	http.HandleFunc("/auth", auth)
 	http.HandleFunc("/resetpwd", resetpwd)
+
+	http.HandleFunc("/login",LoginHandler)
+	http.Handle("/resource",negroni.New(
+		negroni.HandlerFunc(ValidateTokenMiddleware),
+		negroni.Wrap(http.HandlerFunc(ProtectedHandler)),
+		))
+
 	server.ListenAndServe()
 }
