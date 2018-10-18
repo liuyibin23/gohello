@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	SecretKey = "welcome to wangshubo's blog"
+	SecretKey = "beidouapp.e515app"
 )
 
 func fatal(err error) {
@@ -71,7 +71,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := make(jwt.MapClaims)
-	claims["exp"] = time.Now().Add(time.Hour * time.Duration(1)).Unix()
+	claims["exp"] = time.Now().Add(time.Hour * time.Duration(1)).Unix() // 1个小时过期
 	claims["iat"] = time.Now().Unix()
 	token.Claims = claims
 
